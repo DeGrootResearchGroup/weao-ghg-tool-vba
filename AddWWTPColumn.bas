@@ -414,6 +414,13 @@ Private Sub AddWWTPColumnSummary(newPlantName As String, newPlantCellName As Str
     ' Call the generic function to add the column
     AddPlantColumnToSheet "WWTP", "Summary", 3, 6, newPlantName, newPlantCellName, , False
 
+    ' Update the formulas for totals that only include WWTP columns
+    Dim totalColumm As Integer
+    totalColumn = 5
+    For row = 4 To 10
+        ws.Cells(row, totalColumn).Formula = "=SUM(" & ws.Cells(row, firstWWTPCol).Address(False, False) & ":" & ws.Cells(row, newWWTPCol).Address(False, False) & ")"
+    Next row
+
     ' Merge the new cells in rows 46, 51, and 52
     ws.Range(ws.Cells(46, firstWWTPCol), ws.Cells(46, newWWTPCol)).Merge
     ws.Range(ws.Cells(51, firstWWTPCol), ws.Cells(51, newWWTPCol)).Merge
