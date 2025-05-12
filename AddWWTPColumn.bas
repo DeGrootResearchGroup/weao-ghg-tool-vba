@@ -1,9 +1,84 @@
 Attribute VB_Name = "AddPlantColumnModule"
 
+Function GetWorkbookLanguage() As String
+    Dim s As Worksheet
+    On Error Resume Next
+    Set s = ThisWorkbook.Sheets("Entrées")
+    On Error GoTo 0
+
+    If Not s Is Nothing Then
+        GetWorkbookLanguage = "FR"
+    Else
+        GetWorkbookLanguage = "EN"
+    End If
+End Function
+
+Function GetSheetName(sheetKey As String) As String
+    Dim lang As String
+    lang = GetWorkbookLanguage()
+
+    If lang = "FR" Then
+        If sheetKey = "Inputs" Then
+            GetSheetName = "Entrées"
+        ElseIf sheetKey = "Scope 1 - Process" Then
+            GetSheetName = "Portée 1 - Procédés"
+        ElseIf sheetKey = "Scope 1 - Combustion" Then
+            GetSheetName = "Portée 1 - Combustion"
+        ElseIf sheetKey = "Scope 2 - Electricity" Then
+            GetSheetName = "Portée 2 - Électricité"
+        ElseIf sheetKey = "Scope 3 - Fuel upstream" Then
+            GetSheetName = "Portée 3 - Combustibles"
+        ElseIf sheetKey = "Scope 3 - Biosolids" Then
+            GetSheetName = "Portée 3 - Biosolides"
+        ElseIf sheetKey = "Scope 3 - Chemicals" Then
+            GetSheetName = "Portée 3 - Produits chimiques"
+        ElseIf sheetKey = "Scope 3 - Electricity" Then
+            GetSheetName = "Portée 3 - Électricité"
+        ElseIf sheetKey = "Summary" Then
+            GetSheetName = "Bilan"
+        Else
+            GetSheetName = sheetKey ' fallback for unknown keys
+        End If
+    Else
+        GetSheetName = sheetKey ' English, return as-is
+    End If
+End Function
+
+Function GetPlantPrefix(plantType As String) As String
+    Dim lang As String
+    lang = GetWorkbookLanguage()
+
+    If lang = "FR" Then
+        Select Case plantType
+            Case "WWTP": GetPlantPrefix = "STEU"
+            Case "WTP": GetPlantPrefix = "STE"
+            Case Else: GetPlantPrefix = plantType
+        End Select
+    Else
+        GetPlantPrefix = plantType
+    End If
+End Function
+
+Function GetLocalizedText(key As String) As String
+    Dim lang As String
+    lang = GetWorkbookLanguage()
+
+    Select Case key
+        Case "InvalidPlantType"
+            If lang = "FR" Then
+                GetLocalizedText = "Type d'usine invalide. Veuillez utiliser 'STEU' ou 'STE' comme type d'usine."
+            Else
+                GetLocalizedText = "Invalid plant type specified. Please use 'WWTP' or 'WTP' as the plant type."
+            End If
+        Case Else
+            GetLocalizedText = key ' fallback to raw key
+    End Select
+End Function
+
 Private Sub AddPlantColumnInputs(plantType as String, ByRef newPlantName As String, ByRef newPlantCellName As String)
     ' Set the worksheet to the Inputs sheet
     Dim ws As Worksheet
-    Set ws = ThisWorkbook.Sheets("Inputs")
+    Set ws = ThisWorkbook.Sheets(GetSheetName("Inputs"))
 
     ' Set the header row where plant headers are located
     Dim headerRow As Integer
@@ -45,7 +120,7 @@ Private Sub AddPlantColumnInputs(plantType as String, ByRef newPlantName As Stri
                     lastPlantCol = col
                 End If
             Else
-                MsgBox "Invalid plant type specified. Please use 'WWTP' or 'WTP' as the plant type."
+                MsgBox GetLocalizedText("InvalidPlantType")
                 Exit Sub
             End If
         End If
@@ -58,13 +133,13 @@ Private Sub AddPlantColumnInputs(plantType as String, ByRef newPlantName As Stri
     ' Insert a new column at the new plant position
     ws.Columns(newPlantCol).Insert Shift:=xlToRight
 
-    ' Determine the new plant name
+    ' Determine the new plant name (note the cell names are not localized, just the labels)
     If plantType = "WWTP" Then
-        newPlantName = "WWTP" & newPlantCol - firstPlantCol + 1
-        newPlantCellName = newPlantName
+        newPlantName = GetPlantPrefix("WWTP") & newPlantCol - firstPlantCol + 1
+        newPlantCellName = "WWTP" & newPlantCol - firstPlantCol + 1
     ElseIf plantType = "WTP" Then
-        newPlantName = "WTP" & newPlantCol - firstPlantCol + 1
-        newPlantCellName = newPlantName & "_"
+        newPlantName = GetPlantPrefix("WTP") & newPlantCol - firstPlantCol + 1
+        newPlantCellName = "WTP" & newPlantCol - firstPlantCol + 1 & "_"
     Else
         ' This error should already be handled above
         Exit Sub
@@ -95,7 +170,7 @@ End Sub
 Private Sub AddPlantColumnToSheet(plantType as String, sheetName As String, headerRow As Integer, firstPlantCol As Integer, newPlantName As String, newPlantCellName As String, Optional rowsToSkip As Variant, Optional copyTable As Boolean = True, Optional rowsToShiftBack As Variant)
     ' Set the worksheet based on the provided sheet name
     Dim ws As Worksheet
-    Set ws = ThisWorkbook.Sheets(sheetName)
+    Set ws = ThisWorkbook.Sheets(GetSheetName(sheetName))
 
     ' Initialize the last plant column
     Dim lastPlantCol As Integer
@@ -307,7 +382,7 @@ Private Sub AddWWTPColumnSummary(newPlantName As String, newPlantCellName As Str
 
     ' Set the worksheet
     Dim ws As Worksheet
-    Set ws = ThisWorkbook.Sheets("Summary")
+    Set ws = ThisWorkbook.Sheets(GetSheetName("Summary"))
 
     ' Set the header row and first WWTP column
     Dim headerRow As Integer
@@ -398,7 +473,7 @@ Private Sub AddWTPColumnSummary(newPlantName As String, newPlantCellName As Stri
 
     ' Set the worksheet
     Dim ws As Worksheet
-    Set ws = ThisWorkbook.Sheets("Summary")
+    Set ws = ThisWorkbook.Sheets(GetSheetName("Summary"))
 
     ' Set the header row and first WTP column
     Dim headerRow As Integer
